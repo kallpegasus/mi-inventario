@@ -224,8 +224,29 @@
     color:var(--text-faint);font-size:26px;
     margin-top:6px;
     overflow:hidden;
+    position:relative;
   }
-  .card-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .card-photo img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in;}
+  .share-btn{
+    position:absolute;top:6px;right:6px;
+    width:30px;height:30px;border-radius:50%;
+    background:rgba(20,23,27,.72);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .share-btn:hover{background:var(--amber);color:var(--amber-ink);border-color:var(--amber);}
+  .badge-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .mini-badge{
+    font-family:var(--font-mono);
+    font-size:10px;
+    color:var(--teal);
+    border:1px solid var(--teal);
+    border-radius:100px;
+    padding:2px 8px;
+  }
   .card-body{padding:12px 14px 14px;}
   .card-name{font-weight:700;font-size:14.5px;margin:0 0 6px;line-height:1.25;}
   .card-cat{
@@ -257,6 +278,27 @@
     border-radius:12px;
   }
   .empty .big{font-size:17px;color:var(--text-dim);font-weight:700;margin-bottom:8px;}
+
+  .lightbox-content{
+    position:relative;
+    max-width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .lightbox-content img{
+    max-width:100%;
+    max-height:80vh;
+    border-radius:8px;
+    display:block;
+  }
+  .lightbox-close{
+    position:absolute;top:-14px;right:-14px;
+    background:var(--panel);border:1px solid var(--border);
+    width:32px;height:32px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;color:var(--text);cursor:pointer;
+  }
 
   /* modal */
   .overlay{
@@ -295,6 +337,15 @@
   }
   .field textarea{resize:vertical;min-height:60px;}
   .field input:focus, .field textarea:focus{outline:none;border-color:var(--amber);}
+
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;margin-bottom:14px;}
+  .field select{
+    width:100%;background:var(--panel-alt);border:1px solid var(--border);
+    color:var(--text);padding:10px 12px;border-radius:7px;font-size:14px;
+    font-family:var(--font-body);
+  }
+  .field select:focus{outline:none;border-color:var(--amber);}
 
   .photo-picker{
     display:flex;gap:10px;align-items:center;
@@ -394,6 +445,14 @@
   </div>
 </div>
 
+<!-- Modal foto ampliada -->
+<div class="overlay" id="lightboxOverlay">
+  <div class="lightbox-content">
+    <span class="x lightbox-close" id="closeLightbox">&times;</span>
+    <img id="lightboxImg" src="" alt="">
+  </div>
+</div>
+
 <!-- Modal agregar/editar -->
 <div class="overlay" id="overlay">
   <div class="modal">
@@ -419,6 +478,32 @@
     <div class="field">
       <label>Nota (opcional)</label>
       <textarea id="fNote" placeholder="Detalles útiles: color, modelo, estado..."></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Estado</label>
+        <select id="fCondition">
+          <option value="">— Sin especificar —</option>
+          <option value="Nuevo">Nuevo</option>
+          <option value="Usado">Usado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Fecha de compra</label>
+        <input type="date" id="fPurchaseDate">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Precio</label>
+        <input type="number" id="fPrice" placeholder="Ej: 25.00" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Garantía hasta</label>
+        <input type="date" id="fWarranty">
+      </div>
     </div>
 
     <div class="field">
@@ -734,14 +819,34 @@ function render(){
       const card = document.createElement('div');
       card.className = 'card';
       card.onclick = ()=>openEdit(it.id);
+      const badges = [];
+      if(it.condition) badges.push(`<span class="mini-badge">${escapeHtml(it.condition)}</span>`);
+      if(it.warranty) badges.push(`<span class="mini-badge">Garantía: ${escapeHtml(it.warranty)}</span>`);
       card.innerHTML = `
-        <div class="card-photo">${it.photo ? `<img src="${it.photo}" alt="">` : '&#128247;'}</div>
+        <div class="card-photo">
+          ${it.photo ? `<img src="${it.photo}" alt="">` : '&#128247;'}
+          <button class="share-btn" title="Compartir" aria-label="Compartir">&#128228;</button>
+        </div>
         <div class="card-body">
           <div class="card-cat">${escapeHtml(it.category||'Sin categoría')}</div>
           <p class="card-name">${escapeHtml(it.name)}</p>
           <div class="stamp">&#9679; ${escapeHtml(it.location||'Sin ubicación')}</div>
+          ${badges.length ? `<div class="badge-row">${badges.join('')}</div>` : ''}
         </div>
       `;
+      card.querySelector('.share-btn').onclick = (e)=>{
+        e.stopPropagation();
+        shareItem(it.id);
+      };
+      if(it.photo){
+        const imgEl = card.querySelector('.card-photo img');
+        if(imgEl){
+          imgEl.onclick = (e)=>{
+            e.stopPropagation();
+            openLightbox(it.photo, it.name);
+          };
+        }
+      }
       grid.appendChild(card);
     });
 }
@@ -754,6 +859,10 @@ function openAdd(){
   document.getElementById('fCat').value = '';
   document.getElementById('fLoc').value = '';
   document.getElementById('fNote').value = '';
+  document.getElementById('fCondition').value = '';
+  document.getElementById('fPurchaseDate').value = '';
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fWarranty').value = '';
   document.getElementById('photoPreview').innerHTML = '&#128247;';
   document.getElementById('deleteBtn').style.display = 'none';
   overlay.classList.add('open');
@@ -769,6 +878,10 @@ function openEdit(id){
   document.getElementById('fCat').value = it.category || '';
   document.getElementById('fLoc').value = it.location || '';
   document.getElementById('fNote').value = it.note || '';
+  document.getElementById('fCondition').value = it.condition || '';
+  document.getElementById('fPurchaseDate').value = it.purchaseDate || '';
+  document.getElementById('fPrice').value = it.price || '';
+  document.getElementById('fWarranty').value = it.warranty || '';
   document.getElementById('photoPreview').innerHTML = it.photo ? `<img src="${it.photo}" alt="">` : '&#128247;';
   document.getElementById('deleteBtn').style.display = 'inline-block';
   overlay.classList.add('open');
@@ -776,6 +889,58 @@ function openEdit(id){
 
 function closeModal(){
   overlay.classList.remove('open');
+}
+
+function openLightbox(photo, name){
+  document.getElementById('lightboxImg').src = photo;
+  document.getElementById('lightboxImg').alt = name || '';
+  document.getElementById('lightboxOverlay').classList.add('open');
+}
+document.getElementById('closeLightbox').onclick = ()=>{
+  document.getElementById('lightboxOverlay').classList.remove('open');
+};
+document.getElementById('lightboxOverlay').onclick = (e)=>{
+  if(e.target.id==='lightboxOverlay') document.getElementById('lightboxOverlay').classList.remove('open');
+};
+
+function buildShareText(it){
+  const lines = [`📦 ${it.name}`];
+  if(it.category) lines.push(`Categoría: ${it.category}`);
+  if(it.location) lines.push(`Ubicación: ${it.location}`);
+  if(it.condition) lines.push(`Estado: ${it.condition}`);
+  if(it.purchaseDate) lines.push(`Fecha de compra: ${it.purchaseDate}`);
+  if(it.price) lines.push(`Precio: ${it.price}`);
+  if(it.warranty) lines.push(`Garantía hasta: ${it.warranty}`);
+  if(it.note) lines.push(`Nota: ${it.note}`);
+  return lines.join('\n');
+}
+
+async function shareItem(id){
+  const it = items.find(x=>x.id===id);
+  if(!it) return;
+  const text = buildShareText(it);
+
+  try{
+    if(it.photo && navigator.canShare){
+      const res = await fetch(it.photo);
+      const blob = await res.blob();
+      const safeName = (it.name || 'objeto').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40);
+      const file = new File([blob], safeName + '.jpg', {type: blob.type || 'image/jpeg'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:it.name, text});
+        return;
+      }
+    }
+    if(navigator.share){
+      await navigator.share({title: it.name, text});
+      return;
+    }
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  }catch(err){
+    if(err && err.name !== 'AbortError'){
+      alert('No se pudo compartir: ' + err.message + '\n\nSi tu navegador no soporta compartir con foto, puedes copiar este texto:\n\n' + text);
+    }
+  }
 }
 
 document.getElementById('openAddBtn').onclick = openAdd;
@@ -804,6 +969,10 @@ document.getElementById('saveBtn').onclick = async ()=>{
   const category = document.getElementById('fCat').value.trim();
   const location = document.getElementById('fLoc').value.trim();
   const note = document.getElementById('fNote').value.trim();
+  const condition = document.getElementById('fCondition').value;
+  const purchaseDate = document.getElementById('fPurchaseDate').value;
+  const price = document.getElementById('fPrice').value;
+  const warranty = document.getElementById('fWarranty').value;
 
   const saveBtn = document.getElementById('saveBtn');
   const originalLabel = saveBtn.textContent;
@@ -815,10 +984,13 @@ document.getElementById('saveBtn').onclick = async ()=>{
     const it = items.find(x=>x.id===editingId);
     it.name = name; it.category = category; it.location = location;
     it.note = note; it.photo = pendingPhoto;
+    it.condition = condition; it.purchaseDate = purchaseDate;
+    it.price = price; it.warranty = warranty;
   }else{
     items.push({
       id: uid(),
       name, category, location, note,
+      condition, purchaseDate, price, warranty,
       photo: pendingPhoto,
       createdAt: Date.now()
     });
