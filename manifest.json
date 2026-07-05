@@ -1,0 +1,15 @@
+{
+  "name": "Inventario de casa",
+  "short_name": "Inventario",
+  "description": "Ubicación de herramientas, cargadores y objetos guardados en casa.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14171B",
+  "theme_color": "#14171B",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
