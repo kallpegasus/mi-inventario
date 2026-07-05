@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prueba de foto</title>
+<style>
+  body{font-family:sans-serif;background:#14171B;color:#EDEAE3;padding:24px;text-align:center;}
+  label{
+    display:inline-block;background:#F2A63D;color:#4A2E05;font-weight:bold;
+    padding:14px 24px;border-radius:8px;font-size:16px;margin-top:20px;
+  }
+  input[type=file]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  #resultado{margin-top:24px;font-size:14px;color:#9099A6;}
+  img{max-width:200px;margin-top:16px;border-radius:8px;}
+</style>
+</head>
+<body>
+  <h2>Prueba simple</h2>
+  <p>Toca el botón. Si aquí tampoco abre nada, el problema es del navegador o del celular, no de la app.</p>
+  <label for="testInput">📷 Elegir / tomar foto (prueba)</label>
+  <input type="file" id="testInput" accept="image/*">
+  <div id="resultado">Esperando que elijas algo...</div>
+  <div id="preview"></div>
+
+<script>
+document.getElementById('testInput').onchange = function(e){
+  const f = e.target.files[0];
+  const r = document.getElementById('resultado');
+  if(!f){ r.textContent = 'No se seleccionó ningún archivo.'; return; }
+  r.textContent = 'Archivo elegido: ' + f.name + ' (' + Math.round(f.size/1024) + ' KB)';
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    document.getElementById('preview').innerHTML = '<img src="'+ev.target.result+'">';
+  };
+  reader.readAsDataURL(f);
+};
+</script>
+</body>
+</html>
